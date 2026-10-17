@@ -52,16 +52,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Derive repository name
-        id: repo
-        run: echo "name=${GITHUB_REPOSITORY#*/}" >> "$GITHUB_OUTPUT"
-
       - name: Build frontend
         env:
-          # GitHub Pages 项目页需要子路径 base；用户主页（<user>.github.io）会自动用 /
-          VITE_BASE: "/${{ steps.repo.outputs.name }}/"
           # 后端 API 完整地址。仓库变量 VITE_API_URL 未设置时留空，
           # 空值表示同源 /api（仅适用于后端也托管在同域的情况）。
+          # base 用 vite.config.ts 默认的相对路径 "./"，
+          # 对 GitHub Pages 项目页和自定义根域都适用。
           VITE_API_URL: ${{ vars.VITE_API_URL || '' }}
         run: pnpm build:web
 

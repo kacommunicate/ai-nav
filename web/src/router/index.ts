@@ -45,8 +45,11 @@ const routes: RouteRecordRaw[] = [
   },
 ];
 
+// 部署在子路径时（GitHub Pages 项目页 /<repo>/），base 必须与
+// vite.config.ts 的 base 一致。Vite 会把 import.meta.env.BASE_URL
+// 替换成构建时的 base，所以这里直接用它，无需硬编码仓库名。
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes,
   scrollBehavior: () => ({ top: 0 }),
 });
