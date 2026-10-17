@@ -32,6 +32,10 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
+        with:
+          # 必须钉版本：lockfileVersion 9.0 对应 pnpm 9，
+          # pnpm 10 会拒绝解析该 lockfile 导致构建失败
+          version: 9
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -39,8 +43,14 @@ jobs:
           node-version: 20
           cache: pnpm
 
+      - name: Show toolchain versions
+        run: |
+          node --version
+          pnpm --version
+          echo "repo=${GITHUB_REPOSITORY}"
+
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile --filter ./web
+        run: pnpm install --no-frozen-lockfile
 
       - name: Derive repository name
         id: repo
@@ -54,6 +64,9 @@ jobs:
           # 空值表示同源 /api（仅适用于后端也托管在同域的情况）。
           VITE_API_URL: ${{ vars.VITE_API_URL || '' }}
         run: pnpm build:web
+
+      - name: List build output
+        run: ls -la web/dist
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
