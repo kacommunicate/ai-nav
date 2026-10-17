@@ -1,0 +1,47 @@
+# ============================================================
+#  AI 导航站 — 后端专用生产 Dockerfile
+#  只构建并运行 NestJS API，不含前端产物。
+#  前端单独部署到 GitHub Pages，通过 WEB_ORIGIN / VITE_API_URL 对接。
+#
+#  对应根目录 Dockerfile（多阶段、前后端合并打包）。
+# ============================================================
+FROM node:20-alpine AS deps
+WORKDIR /app
+RUN npm install -g pnpm@9
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* ./
+COPY server/package.json ./server/
+COPY web/package.json ./web/
+RUN pnpm install --no-frozen-lockfile
+
+# ---------- 构建 ----------
+FROM node:20-alpine AS build
+WORKDIR /app
+RUN npm install -g pnpm@9
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/server/node_modules ./server/node_modules
+COPY package.json pnpm-workspace.yaml ./
+COPY server ./server
+WORKDIR /app/server
+RUN pnpm exec prisma generate && pnpm run build
+
+# ---------- 运行时 ----------
+FROM node:20-alpine AS runner
+WORKDIR /app
+RUN npm install -g pnpm@9
+
+ENV NODE_ENV=production
+ENV PORT=3001
+
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/server/node_modules ./server/node_modules
+COPY --from=build /app/server/dist ./server/dist
+COPY --from=build /app/server/prisma ./server/prisma
+COPY package.json pnpm-workspace.yaml ./
+COPY server/package.json ./server/
+
+WORKDIR /app/server
+EXPOSE 3001
+
+# 启动时执行迁移，然后启动服务。
+# seed 由外部按需触发（Render Shell: pnpm run seed），避免每次重启重置数据。
+CMD ["sh", "-c", "pnpm exec prisma migrate deploy && node dist/main.js"]

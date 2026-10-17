@@ -1,0 +1,23 @@
+{
+  "name": "ai-nav",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI 工具导航站 — NestJS + Vue3 全栈项目，带后台管理",
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"./server\" --filter \"./web\" dev",
+    "dev:server": "pnpm --filter ./server dev",
+    "dev:web": "pnpm --filter ./web dev",
+    "build": "pnpm --filter ./server build && pnpm --filter ./web build",
+    "build:web": "pnpm --filter ./web build",
+    "start": "pnpm --filter ./server start",
+    "db:generate": "pnpm --filter ./server prisma:generate",
+    "db:migrate": "pnpm --filter ./server prisma:migrate",
+    "db:deploy": "pnpm --filter ./server prisma:deploy",
+    "db:seed": "pnpm --filter ./server seed",
+    "db:reset": "pnpm --filter ./server prisma:reset",
+    "db:studio": "pnpm --filter ./server prisma:studio"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

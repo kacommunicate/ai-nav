@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI 导航 — 发现最好用的 AI 工具</title>
+    <meta name="description" content="收录对话、绘画、视频、编程、办公等全品类 AI 应用的导航站" />
+    <script>
+      // 配合 public/404.html：GitHub Pages 上直接访问 /tool/xxx 会 404，
+      // 404.html 会把路径编码进 query 再跳回首页，这里负责还原成真实路径。
+      // 方案来源：https://github.com/rafgraph/spa-github-pages
+      (function (l) {
+        if (l.search[1] === '/') {
+          var decoded = l.search
+            .slice(1)
+            .split('&')
+            .map(function (s) {
+              return s.replace(/~and~/g, '&');
+            })
+            .join('?');
+          window.history.replaceState(null, '', decoded + l.hash);
+        }
+      })(window.location);
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

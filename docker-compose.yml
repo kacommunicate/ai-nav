@@ -1,0 +1,51 @@
+# ============================================================
+#  AI 导航站 — 本地一键部署（含 MySQL）
+#  用法：docker compose up -d --build
+# ============================================================
+services:
+  db:
+    image: mysql:8.0
+    container_name: ai-nav-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_change_me
+      MYSQL_DATABASE: ai_nav
+      MYSQL_USER: ai_nav
+      MYSQL_PASSWORD: ai_nav_pass_change_me
+    volumes:
+      - mysql-data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_change_me"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-nav-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      # ---- 使用 MySQL ----
+      DB_PROVIDER: mysql
+      DATABASE_URL: "mysql://ai_nav:ai_nav_pass_change_me@db:3306/ai_nav"
+      # ---- 务必修改以下两项 ----
+      JWT_SECRET: "change-me-to-a-long-random-string"
+      ADMIN_USERNAME: "admin"
+      ADMIN_PASSWORD: "change-me-strong-password"
+      WEB_ORIGIN: "http://localhost:3001"
+    ports:
+      - "3001:3001"
+    volumes:
+      # 持久化 SQLite（若切回 sqlite）与日志
+      - ./data:/app/server/prisma
+
+volumes:
+  mysql-data:

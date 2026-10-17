@@ -1,0 +1,75 @@
+# ============================================================
+#  GitHub Pages 自动部署（仅前端）
+#  推送到 main 分支即触发：构建 web/dist 并发布到 Pages。
+#
+#  后端不在这里部署 —— 见 render.yaml / railway.toml。
+#
+#  需要在本仓库 Settings → Pages → Build and deployment → Source
+#  选择 "GitHub Actions" 才能生效。
+# ============================================================
+name: Deploy Frontend to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile --filter ./web
+
+      - name: Derive repository name
+        id: repo
+        run: echo "name=${GITHUB_REPOSITORY#*/}" >> "$GITHUB_OUTPUT"
+
+      - name: Build frontend
+        env:
+          # GitHub Pages 项目页需要子路径 base；用户主页（<user>.github.io）会自动用 /
+          VITE_BASE: "/${{ steps.repo.outputs.name }}/"
+          # 后端 API 完整地址。仓库变量 VITE_API_URL 未设置时留空，
+          # 空值表示同源 /api（仅适用于后端也托管在同域的情况）。
+          VITE_API_URL: ${{ vars.VITE_API_URL || '' }}
+        run: pnpm build:web
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

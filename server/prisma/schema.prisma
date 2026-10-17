@@ -1,0 +1,171 @@
+// ============================================================
+// AI 导航站 — 数据模型
+// ------------------------------------------------------------
+// 默认 provider 为 sqlite（本地零配置）。
+// 切换到 MySQL：把 provider 改成 "mysql"，并将根目录 .env 中
+// DB_PROVIDER / DATABASE_URL 一并修改，然后执行 pnpm db:migrate
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------- 用户（管理员） ----------------
+
+enum UserRole {
+  ADMIN
+  EDITOR
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  displayName  String   @default("")
+  role         UserRole @default(ADMIN)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  auditLogs AuditLog[]
+}
+
+// ---------------- 内容模型 ----------------
+
+model Category {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  description String  @default("")
+  icon        String  @default("") // emoji 或图标名
+  color       String  @default("#6366f1")
+  sortOrder   Int     @default(0)
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tools Tool[]
+
+  @@index([isActive, sortOrder])
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  tools ToolTag[]
+}
+
+model Tool {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String  @unique
+  url         String
+  logo        String  @default("") // 图标地址，留空则用首字母生成
+  description String
+  // 定价模型
+  pricing     Pricing @default(FREE)
+  // 是否需要科学上网 / 国内可直接访问
+  needsVpn    Boolean @default(false)
+  // 是否中文支持
+  zhSupport   Boolean @default(false)
+  // 是否精选推荐（首页突出展示）
+  featured    Boolean @default(false)
+  // 排序权重，越大越靠前
+  sortOrder   Int     @default(0)
+  // 状态：已发布 / 待审核（用户投稿）/ 已下架
+  status      ToolStatus @default(PUBLISHED)
+  // 点击量
+  clicks      Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  categoryId String
+  category   Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  tags       ToolTag[]
+  clicksLog  ClickLog[]
+
+  @@index([status, featured, sortOrder])
+  @@index([categoryId, status])
+}
+
+// 工具与标签的多对多关联
+model ToolTag {
+  toolId String
+  tagId  String
+
+  tool Tool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([toolId, tagId])
+  @@index([tagId])
+}
+
+// ---------------- 枚举 ----------------
+
+enum Pricing {
+  FREE       // 免费
+  FREEMIUM   // 免费增值（有免费额度）
+  PAID       // 付费
+  TRIAL      // 试用
+}
+
+enum ToolStatus {
+  PUBLISHED  // 已发布
+  PENDING    // 待审核（投稿）
+  OFFLINE    // 已下架
+}
+
+// ---------------- 统计 ----------------
+
+model ClickLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  ip        String   @default("")
+  userAgent String   @default("")
+  referer   String   @default("")
+
+  toolId String
+  tool   Tool   @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@index([toolId, createdAt])
+}
+
+// ---------------- 审计 ----------------
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String   // create / update / delete / login 等
+  entity    String   // 操作对象，如 "tool"
+  entityId  String   @default("")
+  detail    String   @default("") // JSON 字符串，记录变更摘要
+  ip        String   @default("")
+  createdAt DateTime @default(now())
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+}
+
+// ---------------- 站点设置（单例） ----------------
+
+model SiteSetting {
+  id          String  @id @default("default")
+  siteName    String  @default("AI 导航")
+  description String  @default("发现最好用的 AI 工具")
+  keywords    String  @default("AI工具,AI导航,人工智能")
+  logo        String  @default("")
+  icp         String  @default("")
+  footerText  String  @default("")
+  // 首页公告
+  notice      String  @default("")
+  updatedAt   DateTime @updatedAt
+}

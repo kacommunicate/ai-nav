@@ -1,0 +1,15 @@
+# ============================================================
+#  AI 导航站 — Railway 部署配置（备选平台）
+#  用法：Railway → New Project → Deploy from GitHub repo，
+#        选择 server/Dockerfile.api 作为 Dockerfile 路径，
+#        并在面板挂载 Volume（挂载到 /data）。
+# ============================================================
+[build]
+builder = "dockerfile"
+dockerfilePath = "server/Dockerfile.api"
+
+[deploy]
+healthcheckPath = "/api/health"
+healthcheckTimeout = 120
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
