@@ -1,0 +1,21 @@
+# ============================================================
+#  AI 导航站 — Koyeb 部署配置（免费，无需绑卡）
+#  用法：Koyeb → Create Service → GitHub → 选仓库，
+#        在面板填入 Neon 的 DATABASE_URL 等环境变量。
+#
+#  数据库用 Neon 免费 Postgres（https://neon.tech），
+#  免费额度内不休眠、不丢数据，无需信用卡。
+# ============================================================
+[build]
+builder = "dockerfile"
+dockerfilePath = "server/Dockerfile.api"
+
+[deploy]
+# 健康检查必须指向真实存在的接口
+healthCheckPath = "/api/health"
+healthCheckTimeout = 120
+# 免费实例：小规格省额度
+instanceType = "free"
+regions = ["fra"]
+minScale = 1
+maxScale = 1

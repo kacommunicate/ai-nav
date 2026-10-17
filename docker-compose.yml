@@ -1,22 +1,20 @@
 # ============================================================
-#  AI 导航站 — 本地一键部署（含 MySQL）
+#  AI 导航站 — 本地一键部署（含 Postgres）
 #  用法：docker compose up -d --build
 # ============================================================
 services:
   db:
-    image: mysql:8.0
+    image: postgres:16-alpine
     container_name: ai-nav-db
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root_change_me
-      MYSQL_DATABASE: ai_nav
-      MYSQL_USER: ai_nav
-      MYSQL_PASSWORD: ai_nav_pass_change_me
+      POSTGRES_PASSWORD: root_change_me
+      POSTGRES_DB: ai_nav
+      POSTGRES_USER: ai_nav
     volumes:
-      - mysql-data:/var/lib/mysql
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+      - pg-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_change_me"]
+      test: ["CMD-SHELL", "pg_isready -U ai_nav -d ai_nav"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -33,9 +31,9 @@ services:
     environment:
       NODE_ENV: production
       PORT: "3001"
-      # ---- 使用 MySQL ----
-      DB_PROVIDER: mysql
-      DATABASE_URL: "mysql://ai_nav:ai_nav_pass_change_me@db:3306/ai_nav"
+      # ---- 使用 Postgres ----
+      DB_PROVIDER: postgresql
+      DATABASE_URL: "postgresql://ai_nav:root_change_me@db:5432/ai_nav?schema=public"
       # ---- 务必修改以下两项 ----
       JWT_SECRET: "change-me-to-a-long-random-string"
       ADMIN_USERNAME: "admin"
@@ -43,9 +41,7 @@ services:
       WEB_ORIGIN: "http://localhost:3001"
     ports:
       - "3001:3001"
-    volumes:
-      # 持久化 SQLite（若切回 sqlite）与日志
-      - ./data:/app/server/prisma
 
 volumes:
-  mysql-data:
+  pg-data:
+

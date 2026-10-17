@@ -1,8 +1,8 @@
 // ============================================================
 // AI 导航站 — 数据模型
 // ------------------------------------------------------------
-// 默认 provider 为 sqlite（本地零配置）。
-// 切换到 MySQL：把 provider 改成 "mysql"，并将根目录 .env 中
+// 默认 provider 为 postgresql（配合 Neon / Koyeb 免费部署）。
+// 切换到 SQLite：把 provider 改成 "sqlite"，并将根目录 .env 中
 // DB_PROVIDER / DATABASE_URL 一并修改，然后执行 pnpm db:migrate
 // ============================================================
 
@@ -11,7 +11,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

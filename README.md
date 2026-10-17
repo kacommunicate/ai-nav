@@ -2,7 +2,7 @@
 
 一个全栈 AI 工具导航网站：前台面向访客提供分类浏览、搜索、详情与访问排行；后台提供工具/分类/标签管理、数据看板、站点设置与操作日志。
 
-技术栈：**NestJS 10 + Prisma 6 + Vue 3 + TypeScript**，默认 SQLite（零配置启动），可一键切换到 MySQL。
+技术栈：**NestJS 10 + Prisma 6 + Vue 3 + TypeScript**，默认 SQLite（零配置启动），可切换到 Postgres / MySQL。
 
 ---
 
@@ -37,7 +37,7 @@
 ### 环境要求
 - Node.js ≥ 18（推荐 20+）
 - pnpm ≥ 9（`npm i -g pnpm`）
-- 可选：MySQL 8.0（生产推荐）或 Docker
+- 可选：Postgres 16（`docker compose up -d db` 即可起本地库）
 
 ### 1. 安装依赖
 
@@ -46,7 +46,9 @@ cd ai-nav
 pnpm install
 ```
 
-### 2. 初始化数据库（SQLite，零配置）
+### 2. 初始化数据库
+
+**本地开发推荐用 SQLite**（零配置，把 `.env` 保持默认即可）：
 
 ```bash
 # 生成 Prisma Client
@@ -59,6 +61,10 @@ pnpm db:migrate
 # 写入种子数据（10 个分类 + 96 个真实 AI 工具 + 管理员账号）
 pnpm db:seed
 ```
+
+> schema 默认 provider 是 `postgresql`（生产用 Neon）。
+> 本地想用 SQLite 的话，把 `server/prisma/schema.prisma` 的 `provider` 改成 `"sqlite"`，
+> 再执行上面三步。两种方式二选一即可。
 
 ### 3. 启动开发服务
 
@@ -87,11 +93,10 @@ ai-nav/
 ├── pnpm-workspace.yaml
 ├── .env.example              # 环境变量模板
 ├── Dockerfile                # 生产镜像（前后端合并）
-├── docker-compose.yml        # 一键部署（含 MySQL）
+├── docker-compose.yml        # 一键部署（含 Postgres）
 ├── server/Dockerfile.api     # 生产镜像（仅后端，前端分离部署用）
-├── render.yaml               # Render 一键部署配置
-├── railway.toml              # Railway 部署配置
-├── DEPLOY.md                 # 公网部署指南（GitHub Pages + Render）
+├── koyeb.yaml                # Koyeb 部署配置
+├── DEPLOY.md                 # 公网部署指南（GitHub Pages + Koyeb + Neon）
 ├── .github/workflows/        # GitHub Pages 自动部署
 │
 ├── server/                   # NestJS 后端
@@ -202,6 +207,7 @@ docker compose exec app sh -c "cd /app/server && pnpm run seed"
 ```
 
 访问 http://localhost:3001（前后端由同一进程托管，NestJS 直接伺服 `web/dist`）。
+默认使用 Postgres 16，数据存在 `pg-data` 卷中，重启不丢。
 
 ### 方式二：仅 SQLite 单容器
 
@@ -210,38 +216,42 @@ docker build -t ai-nav .
 docker run -d -p 3001:3001 \
   -e JWT_SECRET=your-long-random-secret \
   -e ADMIN_PASSWORD=your-strong-password \
-  -e DATABASE_URL=file:/data/prod.db \
+  -e DATABASE_URL="file:/data/prod.db" \
   -v ai-nav-data:/data \
   ai-nav
 ```
 
 > 请挂载卷到 `/data`，否则容器重建后 SQLite 数据会丢失。
+> 注意：schema 默认 provider 是 `postgresql`，用 SQLite 前需先改回 `"sqlite"`。
 
 ---
 
-## ☁️ 公网部署（GitHub Pages + Render）
+## ☁️ 公网部署（GitHub Pages + Koyeb + Neon）
 
-前端部署到 GitHub Pages（免费静态托管），后端部署到 Render / Railway：
+免费方案，**全程无需信用卡**：
 
-```bash
-git push origin main          # 推送后 Pages 工作流自动构建前端
-```
+- 前端 → GitHub Pages（静态托管）
+- 后端 → Koyeb 免费实例（Docker）
+- 数据库 → Neon 免费 Postgres
 
-详细步骤、环境变量对照表和排错见 [DEPLOY.md](DEPLOY.md)。
+详细步骤见 [DEPLOY.md](DEPLOY.md)。
 
-要点：后端 API 用 [server/Dockerfile.api](server/Dockerfile.api) 单独构建，
-前端通过 `VITE_API_URL` 指向后端域名，后端用 `WEB_ORIGIN` 放行跨域。
+要点：数据库 schema 已默认 `postgresql`；后端用 [server/Dockerfile.api](server/Dockerfile.api) 单独构建；前端通过 `VITE_API_URL` 指向 Koyeb 域名，后端用 `WEB_ORIGIN` 放行跨域。
 
 ---
 
-## 🔄 从 SQLite 切换到 MySQL
+## 🔄 数据库切换
 
-1. 编辑 `server/prisma/schema.prisma`，将 `provider` 改为 `"mysql"`
-2. 编辑根目录 `.env`：
-   ```env
-   DB_PROVIDER="mysql"
-   DATABASE_URL="mysql://user:password@127.0.0.1:3306/ai_nav"
-   ```
+当前默认 provider 为 `postgresql`（配合 Neon / Docker 免费部署）。
+
+**切到 SQLite（本地零配置开发）：**
+1. 编辑 `server/prisma/schema.prisma`，将 `provider` 改为 `"sqlite"`
+2. 编辑根目录 `.env`：`DB_PROVIDER="sqlite"`，`DATABASE_URL="file:./dev.db"`
+3. 重新执行 `pnpm db:migrate` + `pnpm db:seed`
+
+**切到 MySQL：**
+1. `server/prisma/schema.prisma` 的 `provider` 改为 `"mysql"`
+2. `DATABASE_URL` 改为 `mysql://user:password@127.0.0.1:3306/ai_nav`
 3. 重建迁移并写入种子数据：
    ```bash
    rm -rf server/prisma/migrations
@@ -273,13 +283,13 @@ pnpm db:seed          # 重新写入种子数据
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
 | `PORT` | `3001` | 后端端口 |
-| `DB_PROVIDER` | `sqlite` | `sqlite` 或 `mysql` |
-| `DATABASE_URL` | `file:./dev.db` | 数据库连接串 |
+| `DB_PROVIDER` | `postgresql` | `postgresql` / `sqlite` / `mysql` |
+| `DATABASE_URL` | — | 数据库连接串（Postgres 需带 `?sslmode=require`） |
 | `JWT_SECRET` | 开发默认值 | **生产必须修改** |
 | `JWT_EXPIRES_IN` | `7d` | Token 有效期 |
 | `ADMIN_USERNAME` | `admin` | 种子管理员账号 |
 | `ADMIN_PASSWORD` | `admin123456` | 种子管理员密码 |
-| `WEB_ORIGIN` | `http://localhost:5173` | 前端地址（CORS） |
+| `WEB_ORIGIN` | `http://localhost:5173` | 前端地址（CORS），多个用逗号分隔 |
 
 ---
 
@@ -287,7 +297,7 @@ pnpm db:seed          # 重新写入种子数据
 
 - [ ] 修改 `JWT_SECRET` 为 32 位以上随机字符串
 - [ ] 修改默认管理员密码（或通过 seed 前的环境变量设置强密码）
-- [ ] 切换 `DB_PROVIDER=mysql` 并配置强密码
+- [ ] 数据库换成 Neon Postgres 或自建数据库，并配强密码
 - [ ] 修改 `docker-compose.yml` 中所有 `change_me` 占位值
 - [ ] 如备案，在后台「站点设置」填写 ICP 备案号
 - [ ] 配置 Nginx 反向代理 + HTTPS（可选）
